@@ -12,7 +12,3 @@ const mockLocalStorage = (() => {
 })();
 
 (globalThis as any).localStorage = mockLocalStorage;
-
-// Disable TLS validation check for self-signed certificates, which is typical for .vpn domains
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-

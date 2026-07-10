@@ -4,6 +4,7 @@ import * as path from "path";
 import * as crypto from "crypto";
 import dotenv from "dotenv";
 import { KomodoClient } from "komodo_client";
+import { logger } from "./logger";
 
 // Load environment variables from .env
 dotenv.config();
@@ -21,13 +22,13 @@ const intervalMs = isNaN(intervalSeconds) ? 120000 : intervalSeconds * 1000;
 
 // Ensure mountPath exists and is absolute
 if (!mountPath) {
-    console.error("Error: GitOps mount path must be specified via GITOPS_MOUNT_PATH environment variable.");
+    logger.error("GitOps mount path must be specified via GITOPS_MOUNT_PATH environment variable.");
     process.exit(1);
 }
 mountPath = path.resolve(mountPath);
 
 if (!komodoKey || !komodoSecret) {
-    console.error("Error: Komodo credentials (KOMODO_KEY, KOMODO_SECRET) must be set.");
+    logger.error("Komodo credentials (KOMODO_KEY, KOMODO_SECRET) must be set.");
     process.exit(1);
 }
 
@@ -90,7 +91,7 @@ async function getDirectoryHashes(baseDir: string): Promise<Map<string, string> 
             const hash = await computeFileHash(file);
             hashes.set(relativePath, hash);
         } catch (e) {
-            console.warn(`Warning: failed to compute hash for file ${file}:`, e);
+            logger.warn(`Failed to compute hash for file ${file}:`, e);
         }
     }
     return hashes;
@@ -99,13 +100,13 @@ async function getDirectoryHashes(baseDir: string): Promise<Map<string, string> 
 // Formats log output if a Komodo command fails
 function printUpdateLogs(update: any) {
     if (!update.success) {
-        console.error(`Operation ${update.operation} failed!`);
+        logger.error(`Komodo Operation ${update.operation} failed!`);
         if (update.logs) {
             for (const log of update.logs) {
                 if (!log.success) {
-                    console.error(`[Stage: ${log.stage}] Command: ${log.command}`);
-                    if (log.stdout) console.error(`Stdout:\n${log.stdout}`);
-                    if (log.stderr) console.error(`Stderr:\n${log.stderr}`);
+                    logger.error(`[Stage: ${log.stage}] Command: ${log.command}`);
+                    if (log.stdout) logger.error(`Stdout:\n${log.stdout}`);
+                    if (log.stderr) logger.error(`Stderr:\n${log.stderr}`);
                 }
             }
         }
@@ -114,18 +115,18 @@ function printUpdateLogs(update: any) {
 
 // Main execution block representing one iteration of GitOps validation
 async function runGitOpsValidation() {
-    console.log(`[${new Date().toISOString()}] Starting GitOps validation loop...`);
+    logger.info("Starting GitOps validation loop...");
 
     // 1. Get the list of stacks, filtering by tag if GITOPS_WATCH_TAG is set
-    console.log("Fetching stacks from Komodo...");
+    logger.info("Fetching stacks from Komodo...");
     const query: any = {};
     if (watchTag) {
-        console.log(`Filtering stacks by tag: "${watchTag}"`);
+        logger.info(`Filtering stacks by tag: "${watchTag}"`);
         query.tags = [watchTag];
     }
 
     const stacks = await komodo.read("ListFullStacks", { query });
-    console.log(`Found ${stacks.length} stack(s) to watch.`);
+    logger.info(`Found ${stacks.length} stack(s) to watch.`);
 
     // 2. Compute the initial hashes of every run directory
     const initialHashesMap = new Map<string, Map<string, string> | null>();
@@ -147,7 +148,7 @@ async function runGitOpsValidation() {
     }
 
     // 3. Run Git Pull on the GitOps repository in Komodo
-    console.log(`Pulling repo "${repoName}" via Komodo...`);
+    logger.info(`Pulling repo "${repoName}" via Komodo...`);
     const pullUpdate: any = await komodo.execute_and_poll("PullRepo", { repo: repoName });
     if (!pullUpdate.success) {
         printUpdateLogs(pullUpdate);
@@ -155,7 +156,7 @@ async function runGitOpsValidation() {
     }
 
     // 4. Run Sync on the ResourceSync in Komodo
-    console.log(`Running Sync "${syncName}" via Komodo...`);
+    logger.info(`Running Sync "${syncName}" via Komodo...`);
     const syncUpdate: any = await komodo.execute_and_poll("RunSync", { sync: syncName });
     if (!syncUpdate.success) {
         printUpdateLogs(syncUpdate);
@@ -173,7 +174,6 @@ async function runGitOpsValidation() {
         const before = initialHashesMap.get(stack.name) || null;
         const after = await getDirectoryHashes(absoluteRunDir);
 
-        // Detect differences
         const added: string[] = [];
         const modified: string[] = [];
         const deleted: string[] = [];
@@ -199,49 +199,50 @@ async function runGitOpsValidation() {
         const hasChanged = added.length > 0 || modified.length > 0 || deleted.length > 0;
 
         if (hasChanged) {
-            console.log(`[CHANGE DETECTED] Stack "${stack.name}" run directory has changed:`);
-            if (added.length > 0) console.log(`  Added: ${added.join(", ")}`);
-            if (modified.length > 0) console.log(`  Modified: ${modified.join(", ")}`);
-            if (deleted.length > 0) console.log(`  Deleted: ${deleted.join(", ")}`);
+            logger.warn(`[CHANGE DETECTED] Stack "${stack.name}" run directory has changed:`, {
+                added: added.length > 0 ? added : undefined,
+                modified: modified.length > 0 ? modified : undefined,
+                deleted: deleted.length > 0 ? deleted : undefined,
+            });
 
-            console.log(`Triggering deploy on stack "${stack.name}"...`);
+            logger.info(`Triggering deploy on stack "${stack.name}"...`);
             const deployUpdate: any = await komodo.execute_and_poll("DeployStack", { stack: stack.name });
             if (deployUpdate.success) {
-                console.log(`Successfully deployed stack "${stack.name}".`);
+                logger.alert(`Successfully deployed stack "${stack.name}".`);
             } else {
-                console.error(`Failed to deploy stack "${stack.name}"!`);
+                logger.error(`Failed to deploy stack "${stack.name}"!`);
                 printUpdateLogs(deployUpdate);
             }
         }
     }
 
-    console.log(`[${new Date().toISOString()}] GitOps validation completed successfully.`);
+    logger.info("GitOps validation completed successfully.");
 }
 
 // Infinite task runner loop
 async function main() {
-    console.log("=========================================");
-    console.log("Komodo GitOps Server Daemon Started");
-    console.log(`GitOps local mount path: ${mountPath}`);
-    console.log(`Repository: ${repoName}`);
-    console.log(`ResourceSync: ${syncName}`);
-    console.log(`Komodo Server: ${komodoUrl}`);
-    console.log(`Watch Tag Filter: ${watchTag ? `"${watchTag}"` : "None (watching all)"}`);
-    console.log(`Interval: ${intervalMs / 1000} seconds`);
-    console.log("=========================================\n");
+    logger.info("=========================================");
+    logger.info("Komodo GitOps Server Daemon Started");
+    logger.info(`GitOps local mount path: ${mountPath}`);
+    logger.info(`Repository: ${repoName}`);
+    logger.info(`ResourceSync: ${syncName}`);
+    logger.info(`Komodo Server: ${komodoUrl}`);
+    logger.info(`Watch Tag Filter: ${watchTag ? `"${watchTag}"` : "None (watching all)"}`);
+    logger.info(`Interval: ${intervalMs / 1000} seconds`);
+    logger.info("=========================================");
 
     while (true) {
         try {
             await runGitOpsValidation();
         } catch (error: any) {
-            console.error(`[${new Date().toISOString()}] Error during GitOps validation cycle:`, error.message || error);
+            logger.error("Error during GitOps validation cycle:", error);
         }
-        console.log(`Sleeping for ${intervalMs / 1000} seconds before next run...\n`);
+        logger.info(`Sleeping for ${intervalMs / 1000} seconds before next run...`);
         await new Promise(resolve => setTimeout(resolve, intervalMs));
     }
 }
 
 main().catch(error => {
-    console.error("Fatal error in daemon initialization:", error);
+    logger.error("Fatal error in daemon initialization:", error);
     process.exit(1);
 });
