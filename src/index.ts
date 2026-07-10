@@ -8,7 +8,6 @@ import { KomodoClient } from "komodo_client";
 // Load environment variables from .env
 dotenv.config();
 
-// Read configurations from process.env (No CLI arguments)
 let mountPath = process.env.GITOPS_MOUNT_PATH || "";
 const repoName = process.env.GITOPS_REPO_NAME || "GitOps";
 const syncName = process.env.GITOPS_SYNC_NAME || "GitOpsSync";
