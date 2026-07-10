@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 
-// Load environment variables
 dotenv.config();
 
 export enum LogLevel {
@@ -12,16 +11,14 @@ export enum LogLevel {
 
 const levelNames = ["DEBUG", "INFO", "WARN", "ERROR"];
 
-// ANSI color escape codes
 const colors = {
-    DEBUG: "\x1b[90m", // Gray
-    INFO: "\x1b[32m",  // Green
-    WARN: "\x1b[33m",  // Yellow
-    ERROR: "\x1b[31m", // Red
+    DEBUG: "\x1b[90m",
+    INFO: "\x1b[32m",
+    WARN: "\x1b[33m",
+    ERROR: "\x1b[31m",
     RESET: "\x1b[0m",
 };
 
-// Determine the current log level from environment variables
 const getLogLevel = (): LogLevel => {
     const envLevel = (process.env.LOG_LEVEL || "INFO").toUpperCase();
     switch (envLevel) {
@@ -35,7 +32,6 @@ const getLogLevel = (): LogLevel => {
 
 const currentLogLevel = getLogLevel();
 
-// Helper to format metadata or objects
 const formatMeta = (meta: any[]): string => {
     if (meta.length === 0) return "";
     return meta
@@ -56,24 +52,26 @@ const formatMeta = (meta: any[]): string => {
 };
 
 /**
- * Extensible Alert System
- * In the future, fill in these functions to send notifications to Discord or Telegram.
+ * Trigger external alert
+ * @param levelName
+ * @param message
+ * @param metaStr
  */
 const triggerAlert = async (levelName: string, message: string, metaStr: string) => {
     const discordWebhookUrl = process.env.ALERT_DISCORD_WEBHOOK;
 
     const alertPayload = `🚨 [${levelName}] ${message}${metaStr ? `\nMetadata: ${metaStr}` : ""}`;
 
-    // Discord Alert Placeholder
     if (discordWebhookUrl) {
         try {
-            // Uncomment in the future when fetch is available/needed:
-            // await fetch(discordWebhookUrl, {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ content: alertPayload }),
-            // });
-            console.log(`[ALERT SYSTEM] (Placeholder) Sent Discord Alert: ${message}`);
+            const response = await fetch(discordWebhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: alertPayload }),
+            });
+            if (!response.ok) {
+                console.error(`[ALERT SYSTEM] Discord API responded with status ${response.status}: ${await response.text()}`);
+            }
         } catch (err: any) {
             console.error(`[ALERT SYSTEM] Failed to send Discord alert:`, err.message || err);
         }

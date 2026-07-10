@@ -6,7 +6,6 @@ import dotenv from "dotenv";
 import { KomodoClient } from "komodo_client";
 import { logger } from "./logger";
 
-// Load environment variables from .env
 dotenv.config();
 
 let mountPath = process.env.GITOPS_MOUNT_PATH || "";
@@ -20,7 +19,6 @@ const watchTag = process.env.KOMODO_STACK_TAG || "";
 const intervalSeconds = parseInt(process.env.GITOPS_INTERVAL_SECONDS || "120", 10);
 const intervalMs = isNaN(intervalSeconds) ? 120000 : intervalSeconds * 1000;
 
-// Ensure mountPath exists and is absolute
 if (!mountPath) {
     logger.error("GitOps mount path must be specified via GITOPS_MOUNT_PATH environment variable.");
     process.exit(1);
@@ -32,7 +30,6 @@ if (!komodoKey || !komodoSecret) {
     process.exit(1);
 }
 
-// Initialize Komodo client
 const komodo = KomodoClient(komodoUrl, {
     type: "api-key",
     params: {
@@ -41,7 +38,6 @@ const komodo = KomodoClient(komodoUrl, {
     },
 });
 
-// Recursively scan a directory and return absolute paths of all files
 async function getFilesRecursive(dir: string): Promise<string[]> {
     let results: string[] = [];
     let list;
@@ -66,13 +62,11 @@ async function getFilesRecursive(dir: string): Promise<string[]> {
     return results;
 }
 
-// Compute the SHA-256 hash of a file's contents
 async function computeFileHash(filePath: string): Promise<string> {
     const content = await fs.promises.readFile(filePath);
     return crypto.createHash("sha256").update(content).digest("hex");
 }
 
-// Get file path to hash mapping for a directory
 async function getDirectoryHashes(baseDir: string): Promise<Map<string, string> | null> {
     try {
         const stat = await fs.promises.stat(baseDir);
@@ -97,7 +91,7 @@ async function getDirectoryHashes(baseDir: string): Promise<Map<string, string> 
     return hashes;
 }
 
-// Formats log output if a Komodo command fails
+//Format komodo operation fail
 function printUpdateLogs(update: any) {
     if (!update.success) {
         logger.error(`Komodo Operation ${update.operation} failed!`);
@@ -113,7 +107,6 @@ function printUpdateLogs(update: any) {
     }
 }
 
-// Main execution block representing one iteration of GitOps validation
 async function runGitOpsValidation() {
     logger.info("Starting GitOps validation loop...");
 
@@ -219,7 +212,6 @@ async function runGitOpsValidation() {
     logger.info("GitOps validation completed successfully.");
 }
 
-// Infinite task runner loop
 async function main() {
     logger.info("=========================================");
     logger.info("Komodo GitOps Server Daemon Started");
