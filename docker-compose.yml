@@ -1,0 +1,15 @@
+services:
+  komodo-gitops:
+    image: topeestla/komodocd:latest
+    container_name: komodo-gitops-server
+    restart: unless-stopped
+    environment:
+      - KOMODO_URL="localhost:8080"
+      - KOMODO_KEY="your-komodo-key"
+      - KOMODO_SECRET="your-komodo-secret"
+      - KOMODO_STACK_TAG="your-stack-tag"
+      - GITOPS_MOUNT_PATH=/gitops # Where the KomodoRepo is
+      - GITOPS_REPO_NAME=komodo-repo # Name of the KomodoRepo
+      - GITOPS_SYNC_NAME=komodo-sync # Name of the KomodoSync
+    volumes:
+      - "your_path:/gitops"
