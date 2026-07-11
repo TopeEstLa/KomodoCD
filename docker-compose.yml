@@ -7,9 +7,9 @@ services:
       - KOMODO_URL=localhost:8080
       - KOMODO_KEY=your-komodo-key
       - KOMODO_SECRET=your-komodo-secret
-      - KOMODO_STACK_TAG=your-stack-tag
-      - GITOPS_MOUNT_PATH=/gitops # Where the KomodoRepo is
+      - KOMODO_STACK_TAG=your-stack-tag # If you want to use a specific stack tag for your KomodoCD instance, set it here. Otherwise, leave it empty.
+      - KOMODO_ROOT_DIRECTORY=${KOMODO_ROOT_DIRECTORY:-/etc/komodo}
       - GITOPS_REPO_NAME=komodo-repo # Name of the KomodoRepo
       - GITOPS_SYNC_NAME=komodo-sync # Name of the KomodoSync
     volumes:
-      - "your_path:/gitops"
+      - "${KOMODO_ROOT_DIRECTORY:-/etc/komodo}:${KOMODO_ROOT_DIRECTORY:-/etc/komodo}"

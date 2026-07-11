@@ -1,5 +1,5 @@
 {
-  "name": "komodo-gitops-server",
+  "name": "komodocd",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",

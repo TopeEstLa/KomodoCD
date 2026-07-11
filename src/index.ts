@@ -8,7 +8,7 @@ import { logger } from "./logger";
 
 dotenv.config();
 
-let mountPath = process.env.GITOPS_MOUNT_PATH || "";
+const komodoRootDirectory = process.env.KOMODO_ROOT_DIRECTORY || "/etc/komodo";
 const repoName = process.env.GITOPS_REPO_NAME || "GitOps";
 const syncName = process.env.GITOPS_SYNC_NAME || "GitOpsSync";
 const komodoUrl = process.env.KOMODO_URL || "localhost:9120";
@@ -19,11 +19,13 @@ const watchTag = process.env.KOMODO_STACK_TAG || "";
 const intervalSeconds = parseInt(process.env.GITOPS_INTERVAL_SECONDS || "120", 10);
 const intervalMs = isNaN(intervalSeconds) ? 120000 : intervalSeconds * 1000;
 
-if (!mountPath) {
-    logger.error("GitOps mount path must be specified via GITOPS_MOUNT_PATH environment variable.");
+if (!komodoRootDirectory) {
+    logger.error("Komodo root directory must be specified via KOMODO_ROOT_DIRECTORY environment variable.");
     process.exit(1);
 }
-mountPath = path.resolve(mountPath);
+
+const resolvedRoot = path.resolve(komodoRootDirectory);
+const repoPath = path.join(resolvedRoot, "repos", repoName);
 
 if (!komodoKey || !komodoSecret) {
     logger.error("Komodo credentials (KOMODO_KEY, KOMODO_SECRET) must be set.");
@@ -131,7 +133,7 @@ async function runGitOpsValidation() {
             continue;
         }
 
-        const absoluteRunDir = path.join(mountPath, runDir);
+        const absoluteRunDir = path.join(repoPath, runDir);
         const hashes = await getDirectoryHashes(absoluteRunDir);
         if (hashes) {
             initialHashesMap.set(stack.name, hashes);
@@ -163,7 +165,7 @@ async function runGitOpsValidation() {
             continue;
         }
 
-        const absoluteRunDir = path.join(mountPath, runDir);
+        const absoluteRunDir = path.join(repoPath, runDir);
         const before = initialHashesMap.get(stack.name) || null;
         const after = await getDirectoryHashes(absoluteRunDir);
 
@@ -214,8 +216,9 @@ async function runGitOpsValidation() {
 
 async function main() {
     logger.info("=========================================");
-    logger.info("Komodo GitOps Server Daemon Started");
-    logger.info(`GitOps local mount path: ${mountPath}`);
+    logger.info("KomodoCD Daemon Started");
+    logger.info(`Komodo root directory: ${resolvedRoot}`);
+    logger.info(`GitOps repository path: ${repoPath}`);
     logger.info(`Repository: ${repoName}`);
     logger.info(`ResourceSync: ${syncName}`);
     logger.info(`Komodo Server: ${komodoUrl}`);
