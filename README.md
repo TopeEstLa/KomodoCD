@@ -1,6 +1,6 @@
 # KomodoCD
 
-An automated GitOps reconciliation daemon for [Komodo CD](https://github.com/mbeentjes/komodo) to achieve an ArgoCD-like GitOps workflow. It monitors repository sync states, computes file changes via SHA-256 hashes of configured stack directories, triggers deployments when modifications are detected, and dispatches status alerts to Discord.
+A simple automated GitOps reconciliation daemon for [Komodo](https://github.com/mbeentjes/komodo) to achieve an ArgoCD-like GitOps workflow. It monitors repository sync states, computes file changes via SHA-256 hashes of configured stack directories, triggers deployments when modifications are detected, and dispatches status alerts to Discord.
 
 ## 🚀 How to Run
 
